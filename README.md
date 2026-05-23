@@ -60,6 +60,24 @@ Ou seja, e preciso carregar pelo menos `102` rotas. Nesse exemplo, podem ficar a
 
 Depois de alguns minutos, o GitHub vai gerar um link publico para abrir o painel em qualquer computador ou celular.
 
+## Sincronizar com Supabase
+
+Para todos os computadores verem a mesma atualizacao, crie a tabela do Supabase usando o arquivo `supabase.sql`.
+
+Depois edite o arquivo `supabase-config.js` e preencha:
+
+```js
+window.EXPEDITION_SUPABASE = {
+  url: "https://seu-projeto.supabase.co",
+  anonKey: "sua-anon-key",
+  statusId: "default",
+};
+```
+
+Com isso, quando uma pessoa atualizar uma onda, os outros computadores com o painel aberto recebem a atualizacao em tempo real.
+
+Observacao: esta configuracao inicial permite leitura e escrita publica pela anon key. Para uso interno mais seguro, o proximo passo e colocar login ou uma chave de acesso.
+
 ## Observacao sobre WhatsApp
 
 O botao **Enviar no WhatsApp** abre o WhatsApp com a mensagem pronta. Por seguranca, o WhatsApp ainda pede a confirmacao manual do envio.

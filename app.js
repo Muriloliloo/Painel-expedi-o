@@ -14,6 +14,20 @@ const wavesBody = document.querySelector("#wavesBody");
 const managerMessage = document.querySelector("#managerMessage");
 const copyFeedback = document.querySelector("#copyFeedback");
 const whatsappLink = document.querySelector("#whatsappLink");
+const syncStatus = document.querySelector("#syncStatus");
+const supabaseSettings = window.EXPEDITION_SUPABASE || {};
+const hasSupabaseConfig =
+  Boolean(supabaseSettings.url) &&
+  Boolean(supabaseSettings.anonKey) &&
+  !supabaseSettings.url.includes("COLE_AQUI") &&
+  !supabaseSettings.anonKey.includes("COLE_AQUI") &&
+  window.supabase;
+const supabaseClient = hasSupabaseConfig
+  ? window.supabase.createClient(supabaseSettings.url, supabaseSettings.anonKey)
+  : null;
+const statusId = supabaseSettings.statusId || "default";
+let isApplyingRemoteState = false;
+let saveTimer = null;
 
 function toMinutes(time) {
   const [hours, minutes] = time.split(":").map(Number);
@@ -65,6 +79,128 @@ function getNowInMinutes() {
 function getCurrentWave() {
   const nowMinutes = getNowInMinutes();
   return waves.find((wave) => nowMinutes >= toMinutes(wave.start) && nowMinutes < toMinutes(wave.end));
+}
+
+function updateSyncStatus(message) {
+  syncStatus.textContent = message;
+}
+
+function getAppState() {
+  return {
+    totalRoutes: totalRoutesInput.value,
+    targetPercent: targetPercentInput.value,
+    managerName: managerNameInput.value,
+    waves,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function applyAppState(state) {
+  if (!state || !Array.isArray(state.waves)) {
+    return;
+  }
+
+  isApplyingRemoteState = true;
+  totalRoutesInput.value = state.totalRoutes ?? totalRoutesInput.value;
+  targetPercentInput.value = state.targetPercent ?? targetPercentInput.value;
+  managerNameInput.value = state.managerName ?? managerNameInput.value;
+
+  state.waves.forEach((wave, index) => {
+    if (!waves[index]) {
+      return;
+    }
+
+    waves[index].planned = clampNumber(wave.planned);
+    waves[index].arrived = clampNumber(wave.arrived);
+    waves[index].loaded = clampNumber(wave.loaded);
+  });
+
+  refresh();
+  isApplyingRemoteState = false;
+}
+
+function scheduleSaveState() {
+  if (!supabaseClient || isApplyingRemoteState) {
+    return;
+  }
+
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveState, 500);
+}
+
+async function saveState() {
+  if (!supabaseClient) {
+    return;
+  }
+
+  updateSyncStatus("Salvando no Supabase...");
+
+  const { error } = await supabaseClient
+    .from("expedition_status")
+    .upsert({
+      id: statusId,
+      payload: getAppState(),
+      updated_at: new Date().toISOString(),
+    });
+
+  updateSyncStatus(error ? "Erro ao sincronizar" : "Sincronizado no Supabase");
+}
+
+async function loadState() {
+  if (!supabaseClient) {
+    updateSyncStatus("Sincronização local");
+    return;
+  }
+
+  updateSyncStatus("Carregando Supabase...");
+
+  const { data, error } = await supabaseClient
+    .from("expedition_status")
+    .select("payload")
+    .eq("id", statusId)
+    .maybeSingle();
+
+  if (error) {
+    updateSyncStatus("Erro ao carregar Supabase");
+    return;
+  }
+
+  if (data?.payload) {
+    applyAppState(data.payload);
+  } else {
+    await saveState();
+  }
+
+  updateSyncStatus("Sincronizado no Supabase");
+}
+
+function subscribeToRemoteChanges() {
+  if (!supabaseClient) {
+    return;
+  }
+
+  supabaseClient
+    .channel("expedition-status-changes")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "expedition_status",
+        filter: `id=eq.${statusId}`,
+      },
+      (payload) => {
+        if (payload.new?.payload) {
+          applyAppState(payload.new.payload);
+          updateSyncStatus("Atualizado em tempo real");
+        }
+      },
+    )
+    .subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        updateSyncStatus("Tempo real conectado");
+      }
+    });
 }
 
 function isWaveClosed(wave, nowMinutes) {
@@ -306,10 +442,17 @@ wavesBody.addEventListener("input", (event) => {
   }
 
   refresh();
+  scheduleSaveState();
 });
 
 [totalRoutesInput, targetPercentInput, managerNameInput, managerPhoneInput].forEach((input) => {
-  input.addEventListener("input", refresh);
+  input.addEventListener("input", () => {
+    refresh();
+
+    if (input !== managerPhoneInput) {
+      scheduleSaveState();
+    }
+  });
 });
 
 document.querySelector("#balanceButton").addEventListener("click", () => {
@@ -322,6 +465,7 @@ document.querySelector("#balanceButton").addEventListener("click", () => {
   });
 
   refresh();
+  scheduleSaveState();
 });
 
 document.querySelector("#copyButton").addEventListener("click", async () => {
@@ -358,4 +502,6 @@ document.querySelector("#whatsappButton").addEventListener("click", () => {
 });
 
 refresh();
+loadState();
+subscribeToRemoteChanges();
 setInterval(refresh, 30000);
