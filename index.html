@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Painel de Expedição</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260523-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -40,6 +40,7 @@
         <div class="field">
           <label for="managerPhone">WhatsApp do chefe</label>
           <input id="managerPhone" type="tel" placeholder="Ex: 5511999999999" />
+          <small class="field-hint">Use 55 + DDD + numero, sem espacos.</small>
         </div>
       </section>
 
@@ -55,7 +56,7 @@
           <small id="targetRoutes">Meta: 0 rotas</small>
         </article>
         <article class="metric-card">
-          <span>Ainda posso perder</span>
+          <span>Folga restante</span>
           <strong id="dailyLossAllowance">0</strong>
           <small id="totalLossAllowance">Tolerância total do dia: 0</small>
         </article>
@@ -104,12 +105,15 @@
         <textarea id="managerMessage" readonly></textarea>
         <div class="actions">
           <button id="copyButton" type="button">Copiar mensagem</button>
-          <button id="whatsappButton" type="button" class="secondary-button">Enviar no WhatsApp</button>
+          <button id="whatsappButton" type="button" class="secondary-button">Abrir WhatsApp</button>
           <span id="copyFeedback" role="status"></span>
         </div>
+        <a id="whatsappLink" class="whatsapp-link" href="#" target="_blank" rel="noopener">
+          Abrir link gerado do WhatsApp
+        </a>
       </section>
     </main>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=20260523-1"></script>
   </body>
 </html>

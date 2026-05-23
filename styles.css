@@ -130,6 +130,11 @@ h2 {
   font-weight: 700;
 }
 
+.field-hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .field input {
   width: 100%;
   border: 1px solid var(--line);
@@ -304,6 +309,18 @@ textarea {
 #copyFeedback {
   color: var(--accent-dark);
   font-weight: 700;
+}
+
+.whatsapp-link {
+  display: none;
+  width: fit-content;
+  color: var(--accent-dark);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.whatsapp-link.visible {
+  display: inline-flex;
 }
 
 @media (max-width: 840px) {

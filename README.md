@@ -6,6 +6,11 @@ Aplicativo simples para acompanhar a expedicao por ondas, calcular a meta diaria
 
 Abra o arquivo `index.html` no navegador ou rode o painel por um servidor local.
 
+No computador onde o projeto foi criado, o painel pode ser acessado por:
+
+```text
+http://127.0.0.1:8080
+```
 
 ## O que preencher
 
@@ -39,7 +44,21 @@ Se o dia tem `120` rotas planejadas e a meta e `85%`, o painel calcula:
 
 Ou seja, e preciso carregar pelo menos `102` rotas. Nesse exemplo, podem ficar ate `18` rotas fora da meta diaria.
 
+## Publicar no GitHub Pages
 
+1. Crie um repositorio no GitHub.
+2. Envie estes arquivos para o repositorio:
+   - `index.html`
+   - `styles.css`
+   - `app.js`
+   - `README.md`
+3. No GitHub, abra **Settings**.
+4. Entre em **Pages**.
+5. Em **Branch**, selecione `main`.
+6. Em pasta, selecione `/root`.
+7. Clique em **Save**.
+
+Depois de alguns minutos, o GitHub vai gerar um link publico para abrir o painel em qualquer computador ou celular.
 
 ## Observacao sobre WhatsApp
 
