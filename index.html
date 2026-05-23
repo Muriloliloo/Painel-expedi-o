@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel de Expedição</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <div>
+          <p class="section-label">Controle de ondas</p>
+          <h1>Painel de Expedição</h1>
+          <p class="hero-text">
+            Acompanhe as rotas planejadas, carregadas, pendentes, meta de 85%
+            e quanto ainda pode ficar para trás sem derrubar o indicador.
+          </p>
+        </div>
+        <div class="clock-card">
+          <span>Agora</span>
+          <strong id="currentTime">--:--</strong>
+          <small id="currentWaveLabel">Calculando onda atual...</small>
+        </div>
+      </section>
+
+      <section class="panel config-panel">
+        <div class="field">
+          <label for="totalRoutes">Rotas planejadas no dia</label>
+          <input id="totalRoutes" type="number" min="0" value="120" />
+        </div>
+        <div class="field">
+          <label for="targetPercent">Meta mínima (%)</label>
+          <input id="targetPercent" type="number" min="1" max="100" value="85" />
+        </div>
+        <div class="field">
+          <label for="managerName">Gestor / canal</label>
+          <input id="managerName" type="text" value="Atualização para liderança" />
+        </div>
+        <div class="field">
+          <label for="managerPhone">WhatsApp do chefe</label>
+          <input id="managerPhone" type="tel" placeholder="Ex: 5511999999999" />
+        </div>
+      </section>
+
+      <section class="metrics-grid" aria-label="Resumo da expedição">
+        <article class="metric-card">
+          <span>Expedido</span>
+          <strong id="shippedPercent">0%</strong>
+          <small id="shippedRoutes">0 rotas carregadas</small>
+        </article>
+        <article class="metric-card">
+          <span>Faltam para 85%</span>
+          <strong id="routesToTarget">0</strong>
+          <small id="targetRoutes">Meta: 0 rotas</small>
+        </article>
+        <article class="metric-card">
+          <span>Ainda posso perder</span>
+          <strong id="dailyLossAllowance">0</strong>
+          <small id="totalLossAllowance">Tolerância total do dia: 0</small>
+        </article>
+        <article class="metric-card status-card" id="statusCard">
+          <span>Status geral</span>
+          <strong id="generalStatus">Dentro da meta</strong>
+          <small id="generalStatusDetail">Atualize as ondas para ver o risco.</small>
+        </article>
+      </section>
+
+      <section class="waves-header">
+        <div>
+          <p class="section-label">Ondas do dia</p>
+          <h2>Planejado x carregado</h2>
+        </div>
+        <button id="balanceButton" type="button">Distribuir rotas igualmente</button>
+      </section>
+
+      <section class="waves-table-wrapper">
+        <table class="waves-table">
+          <thead>
+            <tr>
+              <th>Onda</th>
+              <th>Horário</th>
+              <th>Planejadas</th>
+              <th>Subiram</th>
+              <th>% subiu</th>
+              <th>Faltam subir</th>
+              <th>% falta subir</th>
+              <th>Carregadas</th>
+              <th>Pendentes</th>
+              <th>Posso perder</th>
+              <th>Tempo restante</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="wavesBody"></tbody>
+        </table>
+      </section>
+
+      <section class="message-panel">
+        <div>
+          <p class="section-label">Mensagem pronta</p>
+          <h2>Resumo para enviar ao chefe</h2>
+        </div>
+        <textarea id="managerMessage" readonly></textarea>
+        <div class="actions">
+          <button id="copyButton" type="button">Copiar mensagem</button>
+          <button id="whatsappButton" type="button" class="secondary-button">Enviar no WhatsApp</button>
+          <span id="copyFeedback" role="status"></span>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
