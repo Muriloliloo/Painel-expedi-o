@@ -6,11 +6,6 @@ Aplicativo simples para acompanhar a expedicao por ondas, calcular a meta diaria
 
 Abra o arquivo `index.html` no navegador ou rode o painel por um servidor local.
 
-No computador onde o projeto foi criado, o painel pode ser acessado por:
-
-```text
-http://127.0.0.1:8080
-```
 
 ## O que preencher
 
@@ -44,35 +39,10 @@ Se o dia tem `120` rotas planejadas e a meta e `85%`, o painel calcula:
 
 Ou seja, e preciso carregar pelo menos `102` rotas. Nesse exemplo, podem ficar ate `18` rotas fora da meta diaria.
 
-## Publicar no GitHub Pages
 
-1. Crie um repositorio no GitHub.
-2. Envie estes arquivos para o repositorio:
-   - `index.html`
-   - `styles.css`
-   - `app.js`
-   - `README.md`
-3. No GitHub, abra **Settings**.
-4. Entre em **Pages**.
-5. Em **Branch**, selecione `main`.
-6. Em pasta, selecione `/root`.
-7. Clique em **Save**.
-
-Depois de alguns minutos, o GitHub vai gerar um link publico para abrir o painel em qualquer computador ou celular.
 
 ## Sincronizar com Supabase
 
-Para todos os computadores verem a mesma atualizacao, crie a tabela do Supabase usando o arquivo `supabase.sql`.
-
-Depois edite o arquivo `supabase-config.js` e preencha:
-
-```js
-window.EXPEDITION_SUPABASE = {
-  url: "https://seu-projeto.supabase.co",
-  anonKey: "sua-anon-key",
-  statusId: "default",
-};
-```
 
 Com isso, quando uma pessoa atualizar uma onda, os outros computadores com o painel aberto recebem a atualizacao em tempo real.
 
