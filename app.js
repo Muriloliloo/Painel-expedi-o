@@ -19,51 +19,7 @@ const autoDispatchButton = document.querySelector("#autoDispatchButton");
 const autoDispatchStatus = document.querySelector("#autoDispatchStatus");
 const autoDispatchField = document.querySelector(".auto-dispatch-field");
 const dispatchLog = document.querySelector("#dispatchLog");
-const accessRoleSelect = document.querySelector("#accessRole");
-const accessCodeInput = document.querySelector("#accessCode");
-const accessLoginButton = document.querySelector("#accessLoginButton");
-const accessLogoutButton = document.querySelector("#accessLogoutButton");
-const togglePasswordButton = document.querySelector("#togglePasswordButton");
-const accessStatus = document.querySelector("#accessStatus");
-const accessHint = document.querySelector("#accessHint");
 const supabaseSettings = window.EXPEDITION_SUPABASE || {};
-const accessCodes = {
-  admin: "admin123",
-  operator: "operador123",
-  reader: "",
-  ...(supabaseSettings.accessCodes || {}),
-};
-const roles = {
-  admin: {
-    label: "administrador",
-    hint: "Administrador pode configurar metas, ondas, disparos e dados do painel.",
-  },
-  operator: {
-    label: "operador",
-    hint: "Operador pode atualizar quantas rotas subiram e foram carregadas.",
-  },
-  reader: {
-    label: "leitor",
-    hint: "Leitor apenas acompanha os indicadores e copia a mensagem pronta.",
-  },
-};
-function getStoredRole() {
-  try {
-    return localStorage.getItem("expeditionAccessRole");
-  } catch {
-    return "reader";
-  }
-}
-
-function saveStoredRole(role) {
-  try {
-    localStorage.setItem("expeditionAccessRole", role);
-  } catch {
-    return;
-  }
-}
-
-let activeRole = roles[getStoredRole()] ? getStoredRole() : "reader";
 const hasSupabaseConfig =
   Boolean(supabaseSettings.url) &&
   Boolean(supabaseSettings.anonKey) &&
@@ -78,69 +34,6 @@ let isApplyingRemoteState = false;
 let saveTimer = null;
 let isAutoDispatchEnabled = false;
 let autoDispatchWindow = null;
-
-function canEditSettings() {
-  return activeRole === "admin";
-}
-
-function canUseAutoDispatch() {
-  return activeRole === "admin";
-}
-
-function canEditWaveField(field) {
-  if (activeRole === "admin") {
-    return true;
-  }
-
-  return activeRole === "operator" && ["arrived", "loaded"].includes(field);
-}
-
-function setActiveRole(role) {
-  activeRole = roles[role] ? role : "reader";
-  saveStoredRole(activeRole);
-  applyAccessMode();
-  refresh();
-}
-
-function validateAccess(role, code) {
-  const expectedCode = accessCodes[role] ?? "";
-  return role === "reader" || String(code) === String(expectedCode);
-}
-
-function applyAccessMode() {
-  const role = roles[activeRole] || roles.reader;
-  document.body.dataset.role = activeRole;
-  if (accessRoleSelect) {
-    accessRoleSelect.value = activeRole;
-  }
-  if (accessStatus) {
-    accessStatus.textContent = `Perfil atual: ${role.label}.`;
-  }
-  if (accessHint) {
-    accessHint.textContent = role.hint;
-  }
-
-  [totalRoutesInput, targetPercentInput, managerNameInput, managerPhoneInput].forEach((input) => {
-    input.disabled = !canEditSettings();
-  });
-
-  const balanceButton = document.querySelector("#balanceButton");
-  if (balanceButton) {
-    balanceButton.disabled = !canEditSettings();
-  }
-  autoDispatchButton.disabled = !canUseAutoDispatch();
-
-  if (!canUseAutoDispatch() && isAutoDispatchEnabled) {
-    isAutoDispatchEnabled = false;
-    autoDispatchField.classList.remove("active");
-    autoDispatchButton.textContent = "Ativar disparo automático";
-    autoDispatchStatus.textContent = "Disponível apenas para administrador.";
-  } else if (!canUseAutoDispatch()) {
-    autoDispatchStatus.textContent = "Disponível apenas para administrador.";
-  } else if (!isAutoDispatchEnabled) {
-    autoDispatchStatus.textContent = "Inativo. Ao ativar, o painel abre o WhatsApp com a mensagem pronta a cada 15 min.";
-  }
-}
 
 function toMinutes(time) {
   const [hours, minutes] = time.split(":").map(Number);
@@ -437,9 +330,6 @@ function renderWaves() {
       const missingArrivals = Math.max(0, wave.planned - wave.arrived);
       const arrivedPercent = wave.planned === 0 ? 0 : (wave.arrived / wave.planned) * 100;
       const missingArrivalPercent = wave.planned === 0 ? 0 : (missingArrivals / wave.planned) * 100;
-      const plannedDisabled = canEditWaveField("planned") ? "" : "disabled";
-      const arrivedDisabled = canEditWaveField("arrived") ? "" : "disabled";
-      const loadedDisabled = canEditWaveField("loaded") ? "" : "disabled";
       const isCurrentWave = nowMinutes >= toMinutes(wave.start) && nowMinutes < toMinutes(wave.end);
       const didNotStart = nowMinutes < toMinutes(wave.start);
       const remainingTime = isCurrentWave
@@ -458,12 +348,12 @@ function renderWaves() {
         <tr class="${isCurrentWave ? "current-wave" : ""}">
           <td><strong>${wave.name}</strong></td>
           <td>${wave.start} - ${wave.end}</td>
-          <td><input type="number" min="0" value="${wave.planned}" data-index="${index}" data-field="planned" aria-label="Rotas planejadas da ${wave.name}" ${plannedDisabled}></td>
-          <td><input type="number" min="0" value="${wave.arrived}" data-index="${index}" data-field="arrived" aria-label="Carros que subiram na ${wave.name}" ${arrivedDisabled}></td>
+          <td><input type="number" min="0" value="${wave.planned}" data-index="${index}" data-field="planned" aria-label="Rotas planejadas da ${wave.name}"></td>
+          <td><input type="number" min="0" value="${wave.arrived}" data-index="${index}" data-field="arrived" aria-label="Carros que subiram na ${wave.name}"></td>
           <td>${formatPercent(arrivedPercent)}</td>
           <td>${missingArrivals}</td>
           <td>${formatPercent(missingArrivalPercent)}</td>
-          <td><input type="number" min="0" value="${wave.loaded}" data-index="${index}" data-field="loaded" aria-label="Carros carregados na ${wave.name}" ${loadedDisabled}></td>
+          <td><input type="number" min="0" value="${wave.loaded}" data-index="${index}" data-field="loaded" aria-label="Carros carregados na ${wave.name}"></td>
           <td>${pending}</td>
           <td>${allowedLoss}</td>
           <td>${remainingTime}</td>
@@ -666,23 +556,6 @@ function checkAutomaticDispatches() {
   });
 }
 
-function loginWithSelectedRole() {
-  const requestedRole = accessRoleSelect.value;
-  const code = accessCodeInput.value.trim();
-
-  if (!validateAccess(requestedRole, code)) {
-    if (accessStatus) {
-      accessStatus.textContent = "Código incorreto para este perfil.";
-    }
-    accessCodeInput.focus();
-    return;
-  }
-
-  setActiveRole(requestedRole);
-  accessCodeInput.value = "";
-  copyFeedback.textContent = `Perfil ${roles[activeRole].label} ativado.`;
-}
-
 function refresh() {
   updateClock();
   renderWaves();
@@ -708,8 +581,7 @@ wavesBody.addEventListener("input", (event) => {
   const index = Number(input.dataset.index);
   const field = input.dataset.field;
 
-  if (!Number.isInteger(index) || !field || !canEditWaveField(field)) {
-    refresh();
+  if (!Number.isInteger(index) || !field) {
     return;
   }
 
@@ -724,11 +596,6 @@ wavesBody.addEventListener("input", (event) => {
 
 [totalRoutesInput, targetPercentInput, managerNameInput, managerPhoneInput].forEach((input) => {
   input.addEventListener("input", () => {
-    if (!canEditSettings()) {
-      refresh();
-      return;
-    }
-
     refresh();
 
     if (input !== managerPhoneInput) {
@@ -738,11 +605,6 @@ wavesBody.addEventListener("input", (event) => {
 });
 
 document.querySelector("#balanceButton").addEventListener("click", () => {
-  if (!canEditSettings()) {
-    copyFeedback.textContent = "Apenas administrador pode redistribuir as rotas.";
-    return;
-  }
-
   const totalRoutes = clampNumber(totalRoutesInput.value);
   const base = Math.floor(totalRoutes / waves.length);
   const remainder = totalRoutes % waves.length;
@@ -785,11 +647,6 @@ document.querySelector("#whatsappButton").addEventListener("click", () => {
 });
 
 autoDispatchButton.addEventListener("click", () => {
-  if (!canUseAutoDispatch()) {
-    copyFeedback.textContent = "Apenas administrador pode ativar disparo automático.";
-    return;
-  }
-
   isAutoDispatchEnabled = !isAutoDispatchEnabled;
   autoDispatchField.classList.toggle("active", isAutoDispatchEnabled);
   autoDispatchButton.textContent = isAutoDispatchEnabled ? "Desativar disparo automático" : "Ativar disparo automático";
@@ -811,36 +668,6 @@ autoDispatchButton.addEventListener("click", () => {
   checkAutomaticDispatches();
 });
 
-if (accessLoginButton && !window.simpleAccessLogin) {
-  accessLoginButton.addEventListener("click", loginWithSelectedRole);
-}
-
-if (accessCodeInput && !window.simpleAccessLogin) {
-  accessCodeInput.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      loginWithSelectedRole();
-    }
-  });
-}
-
-if (accessLogoutButton && !window.simpleAccessLogout) {
-  accessLogoutButton.addEventListener("click", () => {
-    setActiveRole("reader");
-    accessCodeInput.value = "";
-    copyFeedback.textContent = "Perfil leitor ativado.";
-  });
-}
-
-if (accessRoleSelect) {
-  accessRoleSelect.addEventListener("change", () => {
-    const selectedRole = roles[accessRoleSelect.value] || roles.reader;
-    if (accessHint) {
-      accessHint.textContent = selectedRole.hint;
-    }
-  });
-}
-
-applyAccessMode();
 refresh();
 loadState();
 subscribeToRemoteChanges();
