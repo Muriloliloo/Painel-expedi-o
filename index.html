@@ -39,9 +39,14 @@
           <input id="managerName" type="text" value="Atualização para liderança" />
         </div>
         <div class="field">
-          <label for="managerPhone">WhatsApp do chefe</label>
+          <label for="managerPhone">WhatsApp direto</label>
           <input id="managerPhone" type="tel" placeholder="Ex: 5511999999999" />
-          <small class="field-hint">Use 55 + DDD + numero, sem espacos.</small>
+          <small class="field-hint">Opcional. Sem numero, o WhatsApp abre para escolher o grupo.</small>
+        </div>
+        <div class="field auto-dispatch-field">
+          <label>Disparo para grupo</label>
+          <button id="autoDispatchButton" type="button" class="secondary-button">Ativar disparo automático</button>
+          <small id="autoDispatchStatus" class="field-hint">Inativo. Ao ativar, o painel abre o WhatsApp com a mensagem pronta a cada 15 min.</small>
         </div>
       </section>
 
@@ -50,6 +55,11 @@
           <span>Expedido</span>
           <strong id="shippedPercent">0%</strong>
           <small id="shippedRoutes">0 rotas carregadas</small>
+        </article>
+        <article class="metric-card">
+          <span>Faltam carregar</span>
+          <strong id="totalPendingRoutes">0</strong>
+          <small>Rotas pendentes no dia</small>
         </article>
         <article class="metric-card">
           <span>Faltam para 85%</span>
@@ -112,11 +122,12 @@
         <a id="whatsappLink" class="whatsapp-link" href="#" target="_blank" rel="noopener">
           Abrir link gerado do WhatsApp
         </a>
+        <div id="dispatchLog" class="dispatch-log" aria-live="polite"></div>
       </section>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=20260523-1"></script>
-    <script src="app.js?v=20260523-2"></script>
+    <script src="app.js?v=20260527-4"></script>
   </body>
 </html>

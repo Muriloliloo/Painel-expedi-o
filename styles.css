@@ -113,7 +113,7 @@ h2 {
 
 .config-panel {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
   padding: 18px;
   margin-bottom: 18px;
@@ -146,9 +146,15 @@ h2 {
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 22px;
+}
+
+@media (max-width: 1080px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .metric-card {
@@ -205,6 +211,14 @@ button {
 }
 
 button:hover {
+  background: var(--accent-dark);
+}
+
+.auto-dispatch-field button {
+  width: 100%;
+}
+
+.auto-dispatch-field.active button {
   background: var(--accent-dark);
 }
 
@@ -321,6 +335,25 @@ textarea {
 
 .whatsapp-link.visible {
   display: inline-flex;
+}
+
+.dispatch-log {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dispatch-log p {
+  margin: 0;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+@media (max-width: 1080px) {
+  .config-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 840px) {

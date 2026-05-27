@@ -15,6 +15,10 @@ const managerMessage = document.querySelector("#managerMessage");
 const copyFeedback = document.querySelector("#copyFeedback");
 const whatsappLink = document.querySelector("#whatsappLink");
 const syncStatus = document.querySelector("#syncStatus");
+const autoDispatchButton = document.querySelector("#autoDispatchButton");
+const autoDispatchStatus = document.querySelector("#autoDispatchStatus");
+const autoDispatchField = document.querySelector(".auto-dispatch-field");
+const dispatchLog = document.querySelector("#dispatchLog");
 const supabaseSettings = window.EXPEDITION_SUPABASE || {};
 const hasSupabaseConfig =
   Boolean(supabaseSettings.url) &&
@@ -28,6 +32,8 @@ const supabaseClient = hasSupabaseConfig
 const statusId = supabaseSettings.statusId || "default";
 let isApplyingRemoteState = false;
 let saveTimer = null;
+let isAutoDispatchEnabled = false;
+let autoDispatchWindow = null;
 
 function toMinutes(time) {
   const [hours, minutes] = time.split(":").map(Number);
@@ -60,20 +66,42 @@ function getCleanPhone() {
   return managerPhoneInput.value.replace(/\D/g, "");
 }
 
-function getWhatsAppUrl() {
+function getWhatsAppUrl(message = managerMessage.value) {
   const phone = getCleanPhone();
-  const message = encodeURIComponent(managerMessage.value);
+  const encodedMessage = encodeURIComponent(message);
 
   if (!phone) {
-    return "";
+    return `https://web.whatsapp.com/send?text=${encodedMessage}`;
   }
 
-  return `https://web.whatsapp.com/send?phone=${phone}&text=${message}`;
+  return `https://web.whatsapp.com/send?phone=${phone}&text=${encodedMessage}`;
 }
 
 function getNowInMinutes() {
   const now = new Date();
   return now.getHours() * 60 + now.getMinutes();
+}
+
+function getTodayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getSentDispatchKeys() {
+  try {
+    return JSON.parse(localStorage.getItem("expeditionSentDispatches") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveSentDispatchKey(key) {
+  const sentDispatches = getSentDispatchKeys();
+  sentDispatches[key] = true;
+  localStorage.setItem("expeditionSentDispatches", JSON.stringify(sentDispatches));
+}
+
+function wasDispatchSent(key) {
+  return Boolean(getSentDispatchKeys()[key]);
 }
 
 function getCurrentWave() {
@@ -352,6 +380,7 @@ function updateSummary() {
 
   document.querySelector("#shippedPercent").textContent = formatPercent(shippedPercent);
   document.querySelector("#shippedRoutes").textContent = `${loadedRoutes} rotas carregadas`;
+  document.querySelector("#totalPendingRoutes").textContent = pendingTotal;
   document.querySelector("#routesToTarget").textContent = routesToTarget;
   document.querySelector("#targetRoutes").textContent = `Meta: ${targetRoutes} rotas`;
   document.querySelector("#dailyLossAllowance").textContent = remainingGeneralAllowance;
@@ -390,7 +419,7 @@ function updateSummary() {
   managerMessage.value = `${managerNameInput.value}
 Status expedição ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}: temos ${totalRoutes} rotas planejadas no dia, ${loadedRoutes} carregadas, ${arrivedRoutes} carros que subiram e ${pendingTotal} rotas pendentes.
 Indicador geral: estamos com ${formatPercent(shippedPercent)} expedido. A meta mínima é ${targetPercent}%, ou seja, precisamos carregar pelo menos ${targetRoutes} rotas.
-Para bater a meta, ainda faltam ${routesToTarget} rotas. A tolerância total do dia é de ${dailyLossAllowance} rotas que podem ficar sem carregar.
+Para bater a meta, ainda faltam ${routesToTarget} rotas. No geral, ainda faltam carregar ${pendingTotal} rotas. A tolerância total do dia é de ${dailyLossAllowance} rotas que podem ficar sem subir o qr.
 As ondas já fechadas consumiram ${closedLosses} dessa tolerância. Por isso, a folga restante para a onda atual e as próximas é de ${remainingGeneralAllowance} rotas.
 ${waveText}`;
 }
@@ -403,8 +432,128 @@ function buildCurrentWaveMessage(wave, nowMinutes, allowedLoss) {
   const remainingTime = formatRemainingTime(toMinutes(wave.end) - nowMinutes);
 
   return `Onda atual: ${wave.name} (${wave.start} até ${wave.end}). Tempo restante: ${remainingTime}.
-Status da onda: ${wave.planned} planejadas, ${wave.arrived} subiram (${formatPercent(arrivedPercent)}), faltam subir ${missingArrivals} (${formatPercent(missingArrivalPercent)}), ${wave.loaded} carregadas e ${pendingLoads} pendentes para carregar.
-Pela folga restante do indicador geral, esta onda pode encerrar com até ${allowedLoss} rotas sem carregar. Se passar disso, a folga das próximas ondas diminui.`;
+Status da onda: ${wave.planned} planejadas, ${wave.arrived} subiram (${formatPercent(arrivedPercent)}), faltam subir ${missingArrivals} (${formatPercent(missingArrivalPercent)}), ${wave.loaded} carregadas e ${pendingLoads} pendentes para subir o qr.
+Pela folga restante do indicador geral, esta onda pode encerrar com até ${allowedLoss} rotas sem subir o qr. Se passar disso, a folga das próximas ondas diminui.`;
+}
+
+function formatTimeFromMinutes(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
+}
+
+function getDispatchSlots() {
+  const slots = [];
+
+  waves.forEach((wave, index) => {
+    const startMinutes = toMinutes(wave.start);
+    const endMinutes = toMinutes(wave.end);
+
+    for (let slotMinutes = startMinutes + 15; slotMinutes <= endMinutes; slotMinutes += 15) {
+      slots.push({
+        id: `wave-${index}-${slotMinutes}`,
+        minute: slotMinutes,
+        wave,
+        label: `${wave.name} - ${formatTimeFromMinutes(slotMinutes)}`,
+      });
+    }
+  });
+
+  return slots;
+}
+
+function getExpeditionTotals() {
+  const totalRoutes = clampNumber(totalRoutesInput.value);
+  const targetPercent = clampNumber(targetPercentInput.value);
+  const targetRoutes = Math.ceil(totalRoutes * (targetPercent / 100));
+  const loadedRoutes = waves.reduce((sum, wave) => sum + wave.loaded, 0);
+  const arrivedRoutes = waves.reduce((sum, wave) => sum + wave.arrived, 0);
+  const pendingTotal = Math.max(0, totalRoutes - loadedRoutes);
+  const routesToTarget = Math.max(0, targetRoutes - loadedRoutes);
+
+  return {
+    arrivedRoutes,
+    loadedRoutes,
+    pendingTotal,
+    routesToTarget,
+    targetPercent,
+    targetRoutes,
+    totalRoutes,
+  };
+}
+
+function buildAutomaticDispatchMessage(slot) {
+  const totals = getExpeditionTotals();
+  const currentTime = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  if (slot.isFinal) {
+    return `${managerNameInput.value}
+Fechamento das ondas ${currentTime}: temos ${totals.totalRoutes} rotas planejadas no dia, ${totals.loadedRoutes} carregadas e ${totals.pendingTotal} faltam carregar.
+Para bater a meta de ${totals.targetPercent}%, ainda faltam ${totals.routesToTarget} rotas.`;
+  }
+
+  const wavePendingLoads = Math.max(0, slot.wave.planned - slot.wave.loaded);
+  const waveMissingArrivals = Math.max(0, slot.wave.planned - slot.wave.arrived);
+
+  return `${managerNameInput.value}
+Atualização automática ${currentTime} - ${slot.wave.name}: ${slot.wave.planned} planejadas, ${slot.wave.loaded} carregadas, ${wavePendingLoads} faltam carregar e ${waveMissingArrivals} faltam subir o qr.
+No geral, temos ${totals.totalRoutes} rotas planejadas, ${totals.loadedRoutes} carregadas e ${totals.pendingTotal} faltam carregar. Para bater a meta de ${totals.targetPercent}%, faltam ${totals.routesToTarget} rotas.`;
+}
+
+function addDispatchLog(message) {
+  const item = document.createElement("p");
+  item.textContent = message;
+  dispatchLog.prepend(item);
+
+  while (dispatchLog.children.length > 4) {
+    dispatchLog.lastElementChild.remove();
+  }
+}
+
+async function openAutomaticWhatsApp(message, slot) {
+  managerMessage.value = message;
+  updateWhatsAppLink();
+
+  try {
+    await navigator.clipboard.writeText(message);
+  } catch {
+    managerMessage.select();
+  }
+
+  const whatsappUrl = getWhatsAppUrl(message);
+
+  if (autoDispatchWindow && !autoDispatchWindow.closed) {
+    autoDispatchWindow.location.href = whatsappUrl;
+  } else {
+    autoDispatchWindow = window.open(whatsappUrl, "expeditionAutoDispatch");
+  }
+
+  copyFeedback.textContent = `Disparo preparado: ${slot.label}.`;
+  addDispatchLog(`${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} - ${slot.label}: mensagem pronta no WhatsApp.`);
+}
+
+function checkAutomaticDispatches() {
+  if (!isAutoDispatchEnabled) {
+    return;
+  }
+
+  const nowMinutes = getNowInMinutes();
+  const todayKey = getTodayKey();
+  const dueSlots = getDispatchSlots().filter((item) => item.minute === nowMinutes);
+
+  if (dueSlots.length === 0) {
+    return;
+  }
+
+  dueSlots.forEach((slot) => {
+    const dispatchKey = `${todayKey}-${slot.id}`;
+    if (wasDispatchSent(dispatchKey)) {
+      return;
+    }
+
+    saveSentDispatchKey(dispatchKey);
+    openAutomaticWhatsApp(buildAutomaticDispatchMessage(slot), slot);
+  });
 }
 
 function refresh() {
@@ -485,23 +634,44 @@ document.querySelector("#whatsappButton").addEventListener("click", () => {
   const phone = getCleanPhone();
   const whatsappUrl = getWhatsAppUrl();
 
-  if (!phone) {
-    copyFeedback.textContent = "Informe o numero com DDI e DDD. Exemplo: 5511999999999.";
-    managerPhoneInput.focus();
-    return;
-  }
-
-  if (phone.length < 12) {
+  if (phone && phone.length < 12) {
     copyFeedback.textContent = "Confira o numero. Para Brasil, use 55 + DDD + numero.";
     managerPhoneInput.focus();
     return;
   }
 
-  copyFeedback.textContent = "Abrindo WhatsApp Web com a mensagem pronta.";
+  copyFeedback.textContent = phone
+    ? "Abrindo WhatsApp Web com a mensagem pronta."
+    : "Abrindo WhatsApp Web. Selecione o grupo e envie a mensagem pronta.";
   window.open(whatsappUrl, "_blank", "noopener");
+});
+
+autoDispatchButton.addEventListener("click", () => {
+  isAutoDispatchEnabled = !isAutoDispatchEnabled;
+  autoDispatchField.classList.toggle("active", isAutoDispatchEnabled);
+  autoDispatchButton.textContent = isAutoDispatchEnabled ? "Desativar disparo automático" : "Ativar disparo automático";
+
+  if (!isAutoDispatchEnabled) {
+    autoDispatchStatus.textContent = "Inativo. Ao ativar, o painel abre o WhatsApp com a mensagem pronta a cada 15 min.";
+    copyFeedback.textContent = "Disparo automático desativado.";
+    return;
+  }
+
+  autoDispatchWindow = window.open("", "expeditionAutoDispatch");
+  if (autoDispatchWindow) {
+    autoDispatchWindow.document.write("<p>Aba reservada para os disparos automáticos do painel de expedição.</p>");
+  }
+
+  autoDispatchStatus.textContent = "Ativo. Dispara 15, 30 e 45 min após o início de cada onda. O disparo de 45 min é o fechamento da onda.";
+  copyFeedback.textContent = "Disparo automático ativado. Deixe esta aba do painel aberta.";
+  addDispatchLog("Disparo automático ativado. O painel vai preparar a mensagem nos horários programados.");
+  checkAutomaticDispatches();
 });
 
 refresh();
 loadState();
 subscribeToRemoteChanges();
-setInterval(refresh, 30000);
+setInterval(() => {
+  refresh();
+  checkAutomaticDispatches();
+}, 30000);
