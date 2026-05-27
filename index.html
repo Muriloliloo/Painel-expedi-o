@@ -4,7 +4,54 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Painel de Expedição</title>
-    <link rel="stylesheet" href="styles.css?v=20260523-1" />
+    <link rel="stylesheet" href="styles.css?v=20260527-9" />
+    <script>
+      window.toggleAccessPassword = function () {
+        var input = document.getElementById("accessCode");
+        var button = document.getElementById("togglePasswordButton");
+        if (!input || !button) return;
+
+        var show = input.type === "password";
+        input.type = show ? "text" : "password";
+        button.textContent = show ? "Ocultar" : "Mostrar";
+      };
+
+      window.simpleAccessLogin = function () {
+        var role = document.getElementById("accessRole").value;
+        var input = document.getElementById("accessCode");
+        var status = document.getElementById("accessStatus");
+        var feedback = document.getElementById("copyFeedback");
+        var code = input.value.trim();
+        var expected = role === "admin" ? "admin123" : role === "operator" ? "operador123" : "";
+
+        if (role !== "reader" && code !== expected) {
+          status.textContent = "Senha incorreta. Use admin123 ou operador123.";
+          input.focus();
+          return;
+        }
+
+        document.querySelectorAll("#totalRoutes, #targetPercent, #managerName, #managerPhone, #balanceButton, #autoDispatchButton").forEach(function (item) {
+          item.disabled = role !== "admin";
+        });
+
+        document.querySelectorAll("[data-field]").forEach(function (item) {
+          var field = item.getAttribute("data-field");
+          item.disabled = field === "planned" ? role !== "admin" : !(role === "admin" || role === "operator");
+        });
+
+        status.textContent = "Perfil atual: " + (role === "admin" ? "administrador" : role === "operator" ? "operador" : "leitor") + ".";
+        input.value = "";
+        if (feedback) {
+          feedback.textContent = "Acesso liberado.";
+        }
+      };
+
+      window.simpleAccessLogout = function () {
+        document.getElementById("accessRole").value = "reader";
+        document.getElementById("accessCode").value = "";
+        window.simpleAccessLogin();
+      };
+    </script>
   </head>
   <body>
     <main class="app-shell">
@@ -22,6 +69,33 @@
           <strong id="currentTime">--:--</strong>
           <small id="currentWaveLabel">Calculando onda atual...</small>
           <small id="syncStatus">Sincronização local</small>
+        </div>
+      </section>
+
+      <section class="panel access-panel" aria-label="Perfil de acesso">
+        <div class="field">
+          <label for="accessRole">Perfil de acesso</label>
+          <select id="accessRole">
+            <option value="reader">Leitor</option>
+            <option value="operator">Operador</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="accessCode">Código de acesso</label>
+          <div class="password-field">
+            <input id="accessCode" type="password" autocomplete="current-password" placeholder="Digite o código" onkeydown="if (event.key === 'Enter') simpleAccessLogin()" />
+            <button id="togglePasswordButton" type="button" class="secondary-button" onclick="toggleAccessPassword()">Mostrar</button>
+          </div>
+          <small id="accessHint" class="field-hint">Administrador: admin123. Operador: operador123. Leitor nao precisa de senha.</small>
+        </div>
+        <div class="field access-actions">
+          <label>Status</label>
+          <div class="access-buttons">
+            <button id="accessLoginButton" type="button" onclick="simpleAccessLogin()">Entrar</button>
+            <button id="accessLogoutButton" type="button" class="secondary-button" onclick="simpleAccessLogout()">Sair</button>
+          </div>
+          <small id="accessStatus" class="field-hint">Perfil atual: leitor.</small>
         </div>
       </section>
 
@@ -127,7 +201,94 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=20260523-1"></script>
-    <script src="app.js?v=20260527-4"></script>
+    <script src="supabase-config.js?v=20260527-9"></script>
+    <script src="app.js?v=20260527-10"></script>
+    <script>
+      (function () {
+        const codes = Object.assign({
+          admin: "admin123",
+          operator: "operador123",
+          reader: "",
+        }, (window.EXPEDITION_SUPABASE && window.EXPEDITION_SUPABASE.accessCodes) || {});
+        const labels = {
+          admin: "administrador",
+          operator: "operador",
+          reader: "leitor",
+        };
+        const roleSelect = document.querySelector("#accessRole");
+        const codeInput = document.querySelector("#accessCode");
+        const loginButton = document.querySelector("#accessLoginButton");
+        const logoutButton = document.querySelector("#accessLogoutButton");
+        const toggleButton = document.querySelector("#togglePasswordButton");
+        const status = document.querySelector("#accessStatus");
+        const feedback = document.querySelector("#copyFeedback");
+
+        function setDisabled(selector, disabled) {
+          document.querySelectorAll(selector).forEach((item) => {
+            item.disabled = disabled;
+          });
+        }
+
+        function applyRole(role) {
+          const canAdmin = role === "admin";
+          const canOperate = role === "operator" || role === "admin";
+          setDisabled("#totalRoutes, #targetPercent, #managerName, #managerPhone, #balanceButton, #autoDispatchButton", !canAdmin);
+          document.querySelectorAll("[data-field]").forEach((input) => {
+            const field = input.dataset.field;
+            input.disabled = field === "planned" ? !canAdmin : !canOperate;
+          });
+          if (status) {
+            status.textContent = "Perfil atual: " + labels[role] + ".";
+          }
+        }
+
+        if (toggleButton && codeInput) {
+          toggleButton.onclick = function () {
+            const show = codeInput.type === "password";
+            codeInput.type = show ? "text" : "password";
+            toggleButton.textContent = show ? "Ocultar" : "Mostrar";
+          };
+        }
+
+        if (loginButton && roleSelect && codeInput) {
+          loginButton.onclick = function () {
+            const role = roleSelect.value || "reader";
+            const expectedCode = codes[role] || "";
+            const typedCode = codeInput.value.trim();
+            if (role !== "reader" && typedCode !== expectedCode) {
+              if (status) {
+                status.textContent = "Código incorreto para este perfil.";
+              }
+              return;
+            }
+            applyRole(role);
+            codeInput.value = "";
+            if (feedback) {
+              feedback.textContent = "Perfil " + labels[role] + " ativado.";
+            }
+          };
+        }
+
+        if (logoutButton) {
+          logoutButton.onclick = function () {
+            if (roleSelect) {
+              roleSelect.value = "reader";
+            }
+            applyRole("reader");
+            if (feedback) {
+              feedback.textContent = "Perfil leitor ativado.";
+            }
+          };
+        }
+
+        if (codeInput && loginButton) {
+          codeInput.addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+              loginButton.click();
+            }
+          });
+        }
+      })();
+    </script>
   </body>
 </html>
