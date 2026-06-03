@@ -25,6 +25,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -119,6 +120,14 @@ h2 {
   margin-bottom: 18px;
 }
 
+.access-panel {
+  display: grid;
+  grid-template-columns: 220px minmax(260px, 1fr) 300px;
+  gap: 16px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
 .field {
   display: grid;
   gap: 8px;
@@ -135,13 +144,48 @@ h2 {
   font-size: 12px;
 }
 
-.field input {
+.field input,
+.field select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 12px;
   color: var(--text);
   background: #fbfdfc;
+}
+
+.field input:disabled,
+.field select:disabled,
+.waves-table input:disabled {
+  color: #7d8a86;
+  background: #eef4f1;
+  cursor: not-allowed;
+}
+
+button:disabled {
+  background: #a8b6b1;
+  cursor: not-allowed;
+}
+
+.access-actions {
+  align-content: start;
+}
+
+.access-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.password-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  gap: 8px;
+}
+
+.password-field button {
+  width: 100%;
+  padding-inline: 10px;
 }
 
 .metrics-grid {
@@ -351,13 +395,15 @@ textarea {
 }
 
 @media (max-width: 1080px) {
-  .config-panel {
+  .config-panel,
+  .access-panel {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 840px) {
   .hero,
+  .access-panel,
   .config-panel,
   .metrics-grid {
     grid-template-columns: 1fr;
