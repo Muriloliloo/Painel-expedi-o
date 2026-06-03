@@ -102,6 +102,8 @@ function setActiveRole(role) {
   refresh();
 }
 
+window.setActiveRole = setActiveRole;
+
 function validateAccess(role, code) {
   const expectedCode = accessCodes[role] ?? "";
   return role === "reader" || String(code) === String(expectedCode);

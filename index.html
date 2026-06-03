@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Painel de Expedição</title>
-    <link rel="stylesheet" href="styles.css?v=20260602-1" />
+    <link rel="stylesheet" href="styles.css?v=20260602-2" />
     <script>
       window.toggleAccessPassword = function () {
         var input = document.getElementById("accessCode");
@@ -41,6 +41,13 @@
         });
 
         status.textContent = "Perfil atual: " + (role === "admin" ? "administrador" : role === "operator" ? "operador" : "leitor") + ".";
+        try {
+          localStorage.setItem("expeditionAccessRole", role);
+        } catch (error) {
+        }
+        if (typeof window.setActiveRole === "function") {
+          window.setActiveRole(role);
+        }
         input.value = "";
         if (feedback) {
           feedback.textContent = "Acesso liberado.";
@@ -202,8 +209,8 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase-config.js?v=20260602-1"></script>
-    <script src="app.js?v=20260602-1"></script>
+    <script src="supabase-config.js?v=20260602-2"></script>
+    <script src="app.js?v=20260602-2"></script>
     <script>
       (function () {
         const codes = Object.assign({
